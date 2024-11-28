@@ -1,29 +1,31 @@
 import random
 
 from torch_geometric.data import Data
-from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
+from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 import torch
+import os
 
-prefix_path = '../datasets/npy/'
-npy_suffix = '.npy'
-mask = np.load(prefix_path + 'Mask' + npy_suffix)
-target = np.load(prefix_path + 'Target' + npy_suffix)
+mask = np.load('../datasets/npy/label/Mask.npy')
+target = np.load('../datasets/npy/label/Target.npy')
 
-knn_graph = 4
 
-def build_node_edge(height, width, degree):
-    name_attr = ['Anticline_Buffer', 'Godenville_Formation_Buffer']
-    attributes = [np.load(prefix_path + name + npy_suffix).reshape(-1) for name in name_attr]
-
-    # scaler = MinMaxScaler()
-    # attributes = [scaler.fit_transform(item.reshape(-1, 1)).flatten() for item in attributes]
-    encoder = OneHotEncoder(sparse=False)
-    attributes = [encoder.fit_transform(attribute.reshape(-1, 1)) for attribute in attributes]
-
+def build_node_edge(degree, attribute_path):
     current_index = 0
     node_features = []
     indices_map = {}
+    layer = np.load(os.path.join(attribute_path, os.listdir(attribute_path)[0]))
+    height = layer.shape[0]
+    width = layer.shape[1]
+    attributes = []
+
+    # 检查每个证据层维度和大小
+    for file in os.listdir(attribute_path):
+        path = os.path.join(attribute_path, file)
+        attribute = np.load(path)
+        if len(attribute.shape) != 2 or attribute.shape[0] != height or attribute.shape[1] != width:
+            raise ValueError(f"文件{file}数据格式错误！请检查数据格式")
+        attributes.append(attribute.reshape(-1))
 
     for i in range(height):
         for j in range(width):
@@ -31,13 +33,14 @@ def build_node_edge(height, width, degree):
                 index = i * width + j
                 node_feature = []
                 for attribute in attributes:
-                    # print(attribute[index])
-                    node_feature.extend(attribute[index])
+                    node_feature.append(attribute[index])
                 node_features.append(node_feature)
                 indices_map[index] = current_index
                 current_index += 1
-    print(current_index)
 
+    node_features = np.array(node_features)
+    scaler = MinMaxScaler()
+    node_features = scaler.fit_transform(node_features)
     node_features = torch.tensor(node_features, dtype=torch.float).contiguous()
 
     edge_index = []
@@ -55,8 +58,8 @@ def build_node_edge(height, width, degree):
                     edge_index.append([indices_map[right_index], indices_map[index]])
 
     edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous()
-
     return node_features, edge_index
+
 
 def build_mask():
     deposit = target.reshape(-1)[mask.reshape(-1) == 1]
@@ -77,12 +80,15 @@ def build_mask():
 
     train_mask = train_mask.unsqueeze(1)
     y = torch.tensor(deposit, dtype=torch.float).unsqueeze(1)
+    print(torch.sum(train_mask))
+    print(torch.sum(val_mask))
+    print(torch.sum(y))
 
     return train_mask, val_mask, y
 
 
 if __name__ == '__main__':
-    node_features, edge_index = build_node_edge(2220, 1826, 3)
+    node_features, edge_index = build_node_edge(4, '../datasets/npy/geochemical/')
     train_mask, val_mask, y = build_mask()
     data = Data(x=node_features, edge_index=edge_index, y=y,
                 train_mask=train_mask, val_mask=val_mask)

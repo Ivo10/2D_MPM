@@ -2,26 +2,25 @@ import argparse
 
 import numpy as np
 import torch.optim
-import glob
-import re
 from sklearn.metrics import accuracy_score
 from torch_geometric.data import Data
 
 from evaluation.CreateEvalutionCurve import create_roc_image, create_loss_image, create_acc_image
 from evaluation.CreateHeatingImage import create_heating_image
-from model.GCN import GCN
 from model.CNN import CNNEmbedding
 from model.FusionAndClassfier import FusionAndClassifier
+from model.GCN import GCN
 from tools.image2graph import build_node_edge, build_mask
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--max-epoch', type=int, default=100)
+    parser.add_argument('--max-epoch', type=int, default=300)
+    parser.add_argument('--degree', type=int, default=4)
 
     args = parser.parse_args()
     print(args)
 
-    node_features, edge_index = build_node_edge(2220, 1826, 3)
+    node_features, edge_index = build_node_edge(args.degree, './datasets/')
     train_mask, val_mask, y = build_mask()
 
     gcn_input = Data(x=node_features, edge_index=edge_index, y=y,
@@ -29,13 +28,13 @@ if __name__ == '__main__':
     print('----------定义图数据为-----------')
     print(gcn_input)
 
-    sub_image_folder = '../datasets/npy/cropped_images/'
-    sub_image_paths = glob.glob(sub_image_folder + '*.npy')
-    # sub_image_paths中文件名排序
-    sub_image_paths.sort(key=lambda x: int(re.search(r'pos_(\d+)', x).group(1)))
-    sub_images = [np.load(path) for path in sub_image_paths]
-    images = [torch.tensor(img, dtype=torch.float32) for img in sub_images]
-    cnn_input = torch.stack(images)
+    # sub_image_folder = '../datasets/npy/cropped_images/'
+    # sub_image_paths = glob.glob(sub_image_folder + '*.npy')
+    # # sub_image_paths中文件名排序
+    # sub_image_paths.sort(key=lambda x: int(re.search(r'pos_(\d+)', x).group(1)))
+    # sub_images = [np.load(path) for path in sub_image_paths]
+    # images = [torch.tensor(img, dtype=torch.float32) for img in sub_images]
+    # cnn_input = torch.stack(images)
 
     cnn_model = CNNEmbedding()
     gcn_model = GCN(gcn_input)
@@ -57,13 +56,13 @@ if __name__ == '__main__':
     epochs = []
 
     for epoch in range(1, args.max_epoch + 1):
-        cnn_output = cnn_model(cnn_input)
-        gcn_output = gcn_model(gcn_input)
+        # cnn_output = cnn_model(cnn_input)
+        output = gcn_model(gcn_input)
 
-        print('cnn_output', cnn_output.shape)
-        print('gcn_output', gcn_output.shape)
+        # print('cnn_output', cnn_output.shape)
+        # print('gcn_output', gcn_output.shape)
 
-        output = fusion_model(gcn_output, cnn_output)
+        # output = fusion_model(gcn_output, cnn_output)
         optimizer.zero_grad()
         loss = criterion(output[gcn_input.train_mask], gcn_input.y[gcn_input.train_mask])
         loss.backward()
@@ -93,10 +92,10 @@ if __name__ == '__main__':
     with torch.no_grad():
         create_loss_image(losses, epochs)
         create_acc_image(acces, epochs)
-        cnn_output = cnn_model(cnn_input)
-        gcn_output = gcn_model(gcn_input)
+        # cnn_output = cnn_model(cnn_input)
+        output = gcn_model(gcn_input)
 
-        output = fusion_model(gcn_output, cnn_output)
+        # output = fusion_model(gcn_output, cnn_output)
         mask = np.load('../datasets/npy/Mask.npy')
         create_heating_image(output, mask)
         pred = gcn_input[gcn_input.val_mask]

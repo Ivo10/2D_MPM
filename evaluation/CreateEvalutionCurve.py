@@ -25,6 +25,12 @@ def create_loss_image(loss, epoch):
 
 
 def create_acc_image(acc, epoch):
+    '''
+    生成acc曲线图
+    :param acc: acc数组
+    :param epoch: epoch数组
+    :return:
+    '''
     plt.figure(figsize=(10, 5))
     plt.plot(epoch, acc, 'r-', label=u'GCN')
     plt.title('acc vs epoch')
