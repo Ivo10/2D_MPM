@@ -38,7 +38,7 @@ def create_acc_image(acc, epoch):
     plt.ylabel('loss')
     plt.grid(True)
     plt.legend()
-    plt.savefig('../figs/acc_' + timestamp + '.png')
+    plt.savefig('./figs/acc_' + timestamp + '.png')
     plt.show()
     plt.close()
 

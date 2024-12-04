@@ -42,6 +42,15 @@ if __name__ == '__main__':
     val_mask = val_mask.to(device)
     y = y.to(device)
 
+    # 创建一个随机矩阵，用于决定哪些特征需要加噪声
+    noise_mask = torch.rand(node_features.size()) < 0.5  # 每个特征有 `noise_probability` 的概率加噪声
+
+    # 使用高斯噪声进行扰动
+    noise = torch.randn_like(node_features) * 0.1  # 高斯噪声，均值为0，标准差为 `noise_std`
+
+    # 将噪声添加到节点特征中
+    node_features = node_features + noise * noise_mask.float()  # 只有被噪声掩码选中的特征会加噪声
+
     gcn_input = Data(x=node_features, edge_index=edge_index, y=y,
                      train_mask=train_mask, val_mask=val_mask)
     print('----------定义图数据为-----------')
