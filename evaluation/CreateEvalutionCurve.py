@@ -19,7 +19,7 @@ def create_loss_image(loss, epoch):
     plt.ylabel('loss')
     plt.grid(True)
     plt.legend()
-    plt.savefig('../figs/loss_' + timestamp + '.png')
+    plt.savefig('./figs/loss_' + timestamp + '.png')
     plt.show()
     plt.close()
 

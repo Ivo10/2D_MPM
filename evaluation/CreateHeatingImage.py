@@ -18,6 +18,6 @@ def create_heating_image(out, mask):
         result[tuple(idx)] = val
     plt.imshow(result, cmap='jet')
     plt.colorbar()
-    plt.savefig('../figs/heatmap_' + timestamp + '.png')
+    plt.savefig('./figs/heatmap_' + timestamp + '.png')
     plt.show()
     plt.close()

@@ -21,8 +21,8 @@ def build_edge():
     :return:
     '''
     node_features, indices_map = preprocessing([
-        '../datasets/npy/geochemical',
-        '../datasets/npy/geology'
+        './datasets/npy/geochemical',
+        './datasets/npy/geology'
     ])
     node_features = torch.tensor(node_features, dtype=torch.float).contiguous()
 

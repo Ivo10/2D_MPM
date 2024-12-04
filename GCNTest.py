@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import torch.optim
+from sklearn.preprocessing import StandardScaler
 
 from torch_geometric.data import Data
 from evaluation.CreateEvalutionCurve import create_roc_image, create_loss_image, create_acc_image
@@ -20,6 +21,21 @@ if __name__ == '__main__':
 
     node_features, edge_index = build_edge()
     train_mask, val_mask, y = build_mask()
+
+    train_features = node_features[train_mask]
+    val_features = node_features[val_mask]
+    inference_mask = ~(train_mask | val_mask)
+    inference_features = node_features[inference_mask]
+
+    scaler = StandardScaler()
+    train_features_scaled = scaler.fit_transform(train_features)
+    val_features_scaled = scaler.transform(val_features)
+    inference_features_scaled = scaler.transform(inference_features)
+
+    node_features[train_mask] = torch.tensor(train_features_scaled, dtype=torch.float32)
+    node_features[val_mask] = torch.tensor(val_features_scaled, dtype=torch.float32)
+    node_features[inference_mask] = torch.tensor(inference_features_scaled, dtype=torch.float32)
+
     node_features = node_features.to(device)
     edge_index = edge_index.to(device)
     train_mask = train_mask.to(device)

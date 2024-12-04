@@ -2,7 +2,7 @@ import os
 import numpy as np
 import datetime
 
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 
 mask = np.load('./datasets/npy/label/Mask.npy')
 
@@ -41,8 +41,8 @@ def preprocessing(attribute_paths):
                 indices_map[index] = current_index
                 current_index += 1
     node_features = np.array(node_features)
-    scaler = MinMaxScaler()
-    node_features = scaler.fit_transform(node_features)
+    # scaler = StandardScaler()
+    # node_features = scaler.fit_transform(node_features)
 
     return node_features, indices_map
 
