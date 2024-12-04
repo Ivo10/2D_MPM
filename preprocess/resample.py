@@ -23,7 +23,7 @@ def resample(input_path, output_path, target_shape):
         # 最临界插值
         resampled_data = zoom(data, zoom_factors, order=0)
 
-        np.save(os.path.join(input_path, file), resampled_data)
+        np.save(os.path.join(output_path, file), resampled_data)
         print(f"重采样完成，新形状: {resampled_data.shape}")
         print(f"新文件已保存为: {file}")
 

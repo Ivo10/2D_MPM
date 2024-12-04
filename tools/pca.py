@@ -2,37 +2,11 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.decomposition import PCA
-
 from evaluation.CreateHeatingImage import create_heating_image
+from tools.preprocess import preprocessing
 
-
-def preprocessing():
-    npy_files = [file for file in os.listdir('../datasets/npy/geochemical/')]
-    attributes = [np.load('../datasets/npy/geochemical/' + name).reshape(-1) for name in npy_files]
-    mask = np.load('../datasets/npy/label/Mask.npy')
-
-    current_index = 0
-    node_features = []
-    indices_map = {}
-    height = 2220
-    width = 1826
-
-    for i in range(height):
-        for j in range(width):
-            if mask[i, j] == 1:
-                index = i * width + j
-                node_feature = []
-                for attribute in attributes:
-                    node_feature.append(attribute[index])
-                node_features.append(node_feature)
-                indices_map[index] = current_index
-                current_index += 1
-    data = np.array(node_features)
-    print(data.shape)
-
-    return data
 
 def pca(data):
     npy_files = [file for file in os.listdir('../datasets/npy/geochemical/')]
@@ -58,28 +32,34 @@ def pca(data):
 
     print(pca.explained_variance_ratio_)
 
+
 def pc1_score(data):
     # 1. 标准化数据
-    scaler = StandardScaler()
-    data_standardized = scaler.fit_transform(data)
+    data = data - np.mean(data, axis=0)
 
     # 2. 计算协方差矩阵
-    cov_matrix = np.cov(data_standardized, rowvar=False)
-
+    cov_matrix = np.cov(data, rowvar=False)
     # 3. 计算特征值和特征向量
     eigvals, eigvecs = np.linalg.eig(cov_matrix)
-
     # 4. 选择最大特征值对应的特征向量作为第一主成分
     pc1 = eigvecs[:, np.argmax(eigvals)]
-
     # 5. 计算每个数据点在 PC1 上的得分
-    pc1_scores = data_standardized.dot(pc1)
+    pc1_scores = data.dot(pc1)
+
+    scaler1 = MinMaxScaler()
+    pc1_scores = np.array(pc1_scores).reshape(-1, 1)
+    pc1_scores = scaler1.fit_transform(pc1_scores).flatten().tolist()
 
     return pc1_scores
 
+
 if __name__ == '__main__':
-    data = preprocessing()
+    node_features, _ = preprocessing([
+        '../datasets/npy/geochemical',
+        '../datasets/npy/geology'
+    ])
     # pca(data)
-    pc1_scores = pc1_score(data)
+    pc1_scores = pc1_score(node_features[:, :-2])
+    print(len(pc1_scores))
     mask = np.load('../datasets/npy/label/Mask.npy')
     create_heating_image(pc1_scores, mask)

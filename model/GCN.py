@@ -1,22 +1,26 @@
 import torch
+import numpy as np
+
 from torch_geometric.nn import GCNConv
+from tools.pca import pc1_score
 
 
 class GCN(torch.nn.Module):
     def __init__(self, data):
         super(GCN, self).__init__()
-        self.conv1 = GCNConv(data.num_features, 16)
-        self.conv2 = GCNConv(16, 64)
+        self.conv1 = GCNConv(data.num_features, 32)
+        self.conv2 = GCNConv(32, 64)
         self.fc = torch.nn.Linear(64, 1)
+        self.pc1_score = torch.tensor(pc1_score(data.x[:, :-2].detach().numpy()), dtype=torch.float32, requires_grad=False)[:, np.newaxis]
+        print(self.pc1_score.shape)
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
         x = self.conv1(x, edge_index)
         x = x.relu()
-        # x = F.dropout(x, p=0.5, training=self.training)
         x = self.conv2(x, edge_index)
         x = x.relu()
-        # x = F.dropout(x, p=0.5, training=self.training)
+        x = x * self.pc1_score
         x = self.fc(x)
         x = torch.sigmoid(x)
         return x

@@ -1,13 +1,14 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import datetime
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S").replace("'", "")
 
 def create_heating_image(out, mask):
     '''
     生成成矿远景区图
-    :param out:模型对所有数据运行结果, 一维数组
+    :param out:模型对所有数据运行结果(一维数组)
     :param mask:从mask.npy获取的mask数组
     :return:
     '''
