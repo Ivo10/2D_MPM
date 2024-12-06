@@ -1,8 +1,8 @@
-import os
-import numpy as np
 import datetime
+import os
 
-from sklearn.preprocessing import StandardScaler
+import numpy as np
+import torch
 
 mask = np.load('./datasets/npy/label/Mask.npy')
 
@@ -41,8 +41,6 @@ def preprocessing(attribute_paths):
                 indices_map[index] = current_index
                 current_index += 1
     node_features = np.array(node_features)
-    # scaler = StandardScaler()
-    # node_features = scaler.fit_transform(node_features)
 
     return node_features, indices_map
 

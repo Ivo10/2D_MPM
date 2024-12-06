@@ -6,6 +6,7 @@ from scipy.spatial.distance import cdist
 from torch_geometric.data import Data
 
 from tools.preprocess import preprocessing
+from sklearn.preprocessing import StandardScaler
 
 mask = np.load('./datasets/npy/label/Mask.npy')
 target = np.load('./datasets/npy/label/Target.npy')
@@ -15,16 +16,17 @@ height = mask.shape[0]
 width = mask.shape[1]
 
 
-def build_edge():
+def build_edge(device):
     '''
     构造图结构邻接关系
+    :param device:
     :return:
     '''
     node_features, indices_map = preprocessing([
         './datasets/npy/geochemical',
         './datasets/npy/geology'
     ])
-    node_features = torch.tensor(node_features, dtype=torch.float).contiguous()
+    node_features = torch.tensor(node_features, dtype=torch.float, device=device).contiguous()
 
     edge_index = []
     for i in range(height):
@@ -40,14 +42,16 @@ def build_edge():
                     edge_index.append([indices_map[index], indices_map[right_index]])
                     edge_index.append([indices_map[right_index], indices_map[index]])
 
-    edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous()
+    edge_index = torch.tensor(edge_index, dtype=torch.long, device=device).t().contiguous()
     return node_features, edge_index
 
 
-def build_mask():
+def build_mask(device, val_ratio=0.2):
     '''
-    生成train_mask、val_mask、y
-    :return: 
+    生成train_mask, val_mask, y
+    :param device:
+    :param val_ratio: 验证集比例
+    :return:
     '''
     deposit = target.reshape(-1)[mask.reshape(-1) == 1]
     valid_indices = np.where(mask.reshape(-1) == 1)[0]
@@ -58,22 +62,22 @@ def build_mask():
     no_deposit = np.zeros_like(deposit)
     no_deposit[random_indices] = 1
 
-    # no_deposit_coords = create_no_deposit_coords() # 二维坐标系下的负样本坐标
+    # no_deposit_coords = create_no_deposit_coords()  # 二维坐标系下的负样本坐标
     # no_deposit_coords_flatten = np.ravel_multi_index(no_deposit_coords.T, mask.shape)
     # no_deposit_indices = np.where(np.isin(no_deposit_coords_flatten, valid_indices))[0]
     #
     # no_deposit = np.zeros_like(deposit)
     # no_deposit[no_deposit_indices] = 1
 
-    train_mask = torch.tensor(deposit + no_deposit, dtype=torch.bool)
+    train_mask = torch.tensor(deposit + no_deposit, dtype=torch.bool, device=device)
 
     true_indices = torch.where(train_mask == True)[0]
-    val_num = (int)(0.2 * len(true_indices))
+    val_num = (int)(val_ratio * len(true_indices))
     val_indices = random.sample(true_indices.tolist(), val_num)
-    val_mask = torch.zeros_like(train_mask, dtype=torch.bool)
+    val_mask = torch.zeros_like(train_mask, dtype=torch.bool, device=device)
     val_mask[val_indices] = True
     train_mask[val_indices] = False
-    y = torch.tensor(deposit, dtype=torch.float).unsqueeze(1)
+    y = torch.tensor(deposit, dtype=torch.float, device=device).unsqueeze(1)
 
     return train_mask, val_mask, y
 
@@ -124,9 +128,49 @@ def create_no_deposit_coords(min_deposit_distance=100, max_buffer_level=8, min_s
     return np.array(sampled_coords)
 
 
+def add_noise(x, noise_probability=0.5, noise_std=1):
+    '''
+    为原始数据添加噪声
+    :param x:原始数据
+    :param noise_probability:噪声概率
+    :param noise_std:噪声标准差
+    :return:
+    '''
+    noise_mask = torch.rand(x.size(), device=x.device) < noise_probability
+    noise = torch.randn_like(x, device=x.device) * noise_std
+    x = x + noise * noise_mask.float()
+    return x
+
+def scaler(x, train_mask, val_mask):
+    '''
+    训练集、验证集、测试集分开进行标准化
+    :param x:
+    :param train_mask:
+    :param val_mask:
+    :return:
+    '''
+    train_x = x[train_mask]
+    val_x = x[val_mask]
+    test_mask = ~(train_mask | val_mask)
+    test_x = x[test_mask]
+
+    scaler = StandardScaler()
+    train_x_scaled = scaler.fit_transform(train_x)
+    val_x_scaled = scaler.transform(val_x)
+    test_x_scaled = scaler.transform(test_x)
+
+    x[train_mask] = torch.tensor(train_x_scaled, dtype=torch.float32, device=x.device)
+    x[val_mask] = torch.tensor(val_x_scaled, dtype=torch.float32, device=x.device)
+    x[test_mask] = torch.tensor(test_x_scaled, dtype=torch.float32, device=x.device)
+
+    return x
+
+
 if __name__ == '__main__':
-    node_features, edge_index = build_edge()
-    train_mask, val_mask, y = build_mask()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    node_features, edge_index = build_edge(device)
+    train_mask, val_mask, y = build_mask(device)
     data = Data(x=node_features, edge_index=edge_index, y=y,
                 train_mask=train_mask, val_mask=val_mask)
     print(data)

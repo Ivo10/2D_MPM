@@ -1,71 +1,45 @@
 import argparse
 import numpy as np
 import torch.optim
-from sklearn.preprocessing import StandardScaler
 
 from torch_geometric.data import Data
 from evaluation.CreateEvalutionCurve import create_roc_image, create_loss_image, create_acc_image
 from evaluation.CreateHeatingImage import create_heating_image
 from model.GCN import GCN
-from tools.image2graph import build_edge, build_mask
+from tools.image2graph import build_edge, build_mask, add_noise, scaler
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--max-epoch', type=int, default=300)
     parser.add_argument('--degree', type=int, default=4)
+    parser.add_argument('--lr', type=float, default=0.006)
 
     args = parser.parse_args()
     print(args)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    node_features, edge_index = build_edge()
-    train_mask, val_mask, y = build_mask()
+    node_features, edge_index = build_edge(device)
+    train_mask, val_mask, y = build_mask(device)
 
-    train_features = node_features[train_mask]
-    val_features = node_features[val_mask]
-    inference_mask = ~(train_mask | val_mask)
-    inference_features = node_features[inference_mask]
+    node_features = scaler(node_features, train_mask, val_mask)
 
-    scaler = StandardScaler()
-    train_features_scaled = scaler.fit_transform(train_features)
-    val_features_scaled = scaler.transform(val_features)
-    inference_features_scaled = scaler.transform(inference_features)
-
-    node_features[train_mask] = torch.tensor(train_features_scaled, dtype=torch.float32)
-    node_features[val_mask] = torch.tensor(val_features_scaled, dtype=torch.float32)
-    node_features[inference_mask] = torch.tensor(inference_features_scaled, dtype=torch.float32)
-
-    node_features = node_features.to(device)
-    edge_index = edge_index.to(device)
-    train_mask = train_mask.to(device)
-    val_mask = val_mask.to(device)
-    y = y.to(device)
-
-    # 创建一个随机矩阵，用于决定哪些特征需要加噪声
-    noise_mask = torch.rand(node_features.size()) < 0.5  # 每个特征有 `noise_probability` 的概率加噪声
-
-    # 使用高斯噪声进行扰动
-    noise = torch.randn_like(node_features) * 0.1  # 高斯噪声，均值为0，标准差为 `noise_std`
-
-    # 将噪声添加到节点特征中
-    node_features = node_features + noise * noise_mask.float()  # 只有被噪声掩码选中的特征会加噪声
-
+    node_features = add_noise(node_features, 0.5, 5)
     gcn_input = Data(x=node_features, edge_index=edge_index, y=y,
                      train_mask=train_mask, val_mask=val_mask)
     print('----------定义图数据为-----------')
     print(gcn_input)
 
-    gcn_model = GCN(gcn_input).to(device)
+    model = GCN(gcn_input).to(device)
 
-    optimizer = torch.optim.Adam(gcn_model.parameters(), lr=0.006, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=5e-4)
     criterion = torch.nn.BCELoss()
     losses = []
     acces = []
     epochs = []
 
     for epoch in range(1, args.max_epoch + 1):
-        output = gcn_model(gcn_input)
+        output = model(gcn_input)
         print(output.shape)
         optimizer.zero_grad()
         loss = criterion(output[gcn_input.train_mask], gcn_input.y[gcn_input.train_mask])
@@ -83,7 +57,7 @@ if __name__ == '__main__':
             epoch, args.max_epoch, loss.item(), acc))
 
         # # Save model weights of this epoch
-        # torch.save(model.state_dict(), '../saved_model/GCN.pth')
+        # torch.save(model.state_dict(), './saved_model/GCN.pth')
 
         # model.eval()
         with torch.no_grad():
@@ -97,8 +71,8 @@ if __name__ == '__main__':
     with torch.no_grad():
         create_loss_image(losses, epochs)
         create_acc_image(acces, epochs)
-        output = gcn_model(gcn_input)
-        mask = np.load('datasets/npy/label/Mask.npy')
+        output = model(gcn_input)
+        mask = np.load('./datasets/npy/label/Mask.npy')
         create_heating_image(output, mask)
         pred_val = gcn_input[gcn_input.val_mask]
         create_roc_image(gcn_input.y[gcn_input.val_mask].detach().numpy(), pred_val)
