@@ -155,9 +155,9 @@ def scaler(x, train_mask, val_mask):
     test_x = x[test_mask]
 
     scaler = StandardScaler()
-    train_x_scaled = scaler.fit_transform(train_x)
-    val_x_scaled = scaler.transform(val_x)
-    test_x_scaled = scaler.transform(test_x)
+    train_x_scaled = scaler.fit_transform(train_x.cpu())
+    val_x_scaled = scaler.transform(val_x.cpu())
+    test_x_scaled = scaler.transform(test_x.cpu())
 
     x[train_mask] = torch.tensor(train_x_scaled, dtype=torch.float32, device=x.device)
     x[val_mask] = torch.tensor(val_x_scaled, dtype=torch.float32, device=x.device)
