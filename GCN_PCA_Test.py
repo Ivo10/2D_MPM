@@ -5,7 +5,7 @@ import torch.optim
 from torch_geometric.data import Data
 from evaluation.CreateEvalutionCurve import create_roc_image, create_loss_image, create_acc_image
 from evaluation.CreateHeatingImage import create_heating_image
-from model.GCN import GCN
+from model.GCN_PCA import GCN
 from tools.image2graph import build_edge, build_mask, add_noise, scaler
 
 if __name__ == '__main__':

@@ -12,7 +12,8 @@ class GCN(torch.nn.Module):
         self.conv2 = GCNConv(32, 64)
         self.fc = torch.nn.Linear(64, 1)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.pc1_score = torch.tensor(pc1_score(data.x[:, :-2].cpu().detach().numpy()), dtype=torch.float32, requires_grad=False)[:, np.newaxis].to(self.device)
+        self.pc1_score = torch.tensor(pc1_score(data.x[:, :-2].cpu().detach().numpy()),
+                                      dtype=torch.float32, requires_grad=False, device=self.device)[:, np.newaxis]
         print(self.pc1_score.shape)
 
     def forward(self, data):
