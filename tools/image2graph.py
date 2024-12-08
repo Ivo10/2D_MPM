@@ -170,8 +170,13 @@ def scaler(x, train_mask, val_mask):
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    node_features, edge_index = build_edge(device)
-    train_mask, val_mask, y = build_mask(device)
+    node_features, edge_index = build_edge()
+    train_mask, val_mask, y = build_mask()
+
+
+
     data = Data(x=node_features, edge_index=edge_index, y=y,
                 train_mask=train_mask, val_mask=val_mask)
     print(data)
+    torch.save(data, '../temp/data.pt')
+
