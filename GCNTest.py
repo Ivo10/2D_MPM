@@ -19,8 +19,8 @@ if __name__ == '__main__':
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    node_features, edge_index = build_edge(device)
-    train_mask, val_mask, y = build_mask(device)
+    node_features, edge_index = build_edge()
+    train_mask, val_mask, y = build_mask()
 
     node_features = scaler(node_features, train_mask, val_mask)
 

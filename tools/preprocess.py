@@ -2,7 +2,6 @@ import datetime
 import os
 
 import numpy as np
-import torch
 
 mask = np.load('./datasets/npy/label/Mask.npy')
 

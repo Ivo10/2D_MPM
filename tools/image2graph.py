@@ -12,11 +12,12 @@ mask = np.load('./datasets/npy/label/Mask.npy')
 target = np.load('./datasets/npy/label/Target.npy')
 anticline = np.load('./datasets/npy/geology/Anticline_Buffer.npy')
 godenville = np.load('./datasets/npy/geology/Godenville_Formation_Buffer.npy')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 height = mask.shape[0]
 width = mask.shape[1]
 
 
-def build_edge(device):
+def build_edge():
     '''
     构造图结构邻接关系
     :param device:
@@ -46,7 +47,7 @@ def build_edge(device):
     return node_features, edge_index
 
 
-def build_mask(device, val_ratio=0.2):
+def build_mask(val_ratio=0.2):
     '''
     生成train_mask, val_mask, y
     :param device:
@@ -136,7 +137,7 @@ def add_noise(x, noise_probability=0.5, noise_std=1):
     :param noise_std:噪声标准差
     :return:
     '''
-    noise_mask = torch.rand(x.size(), device=x.device) < noise_probability
+    noise_mask = torch.rand_like(x, device=x.device) < noise_probability
     noise = torch.randn_like(x, device=x.device) * noise_std
     x = x + noise * noise_mask.float()
     return x
