@@ -22,7 +22,7 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if os.path.exists('./temp/data.pth'):
-        data = torch.load('./temp/data.pth')
+        data = torch.load('./temp/data.pth').to(device)
     else:
         node_features, edge_index = build_edge()
         train_mask, val_mask, y = build_mask()

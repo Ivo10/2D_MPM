@@ -1,13 +1,14 @@
 import argparse
+import os
+
 import numpy as np
 import torch.optim
-
 from torch_geometric.data import Data
+
 from evaluation.CreateEvalutionCurve import create_roc_image, create_loss_image, create_acc_image
 from evaluation.CreateHeatingImage import create_heating_image
-from model.FusionAndClassfier import FusionAndClassifier
-from model.Residual_GCN import Residual_GCN
-from tools.image2graph import build_edge, build_mask
+from model.Residual_GAT import Residual_GAT
+from tools.image2graph import build_edge, build_mask, scaler, add_noise
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -19,40 +20,41 @@ if __name__ == '__main__':
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    node_features, edge_index = build_edge()
-    train_mask, val_mask, y = build_mask()
-    node_features = node_features.to(device)
-    edge_index = edge_index.to(device)
-    train_mask = train_mask.to(device)
-    val_mask = val_mask.to(device)
-    y = y.to(device)
+    if os.path.exists('./temp/data.pth'):
+        data = torch.load('./temp/data.pth').to(device)
+    else:
+        node_features, edge_index = build_edge()
+        train_mask, val_mask, y = build_mask()
 
-    gcn_input = Data(x=node_features, edge_index=edge_index, y=y,
-                     train_mask=train_mask, val_mask=val_mask)
+        node_features = scaler(node_features, train_mask, val_mask)
+
+        node_features = add_noise(node_features, 0.5, 5)
+        data = Data(x=node_features, edge_index=edge_index, y=y,
+                    train_mask=train_mask, val_mask=val_mask)
+        torch.save(data, './temp/data.pth')
     print('----------定义图数据为-----------')
-    print(gcn_input)
+    print(data)
 
-    gcn_model = Residual_GCN(gcn_input).to(device)
+    model = Residual_GAT(data).to(device)
 
-    fusion_model = FusionAndClassifier(64, 64)
-    optimizer = torch.optim.Adam(gcn_model.parameters(), lr=0.006, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.006, weight_decay=5e-4)
     criterion = torch.nn.BCELoss()
     losses = []
     acces = []
     epochs = []
 
     for epoch in range(1, args.max_epoch + 1):
-        output = gcn_model(gcn_input)
+        output = model(data)
         optimizer.zero_grad()
-        loss = criterion(output[gcn_input.train_mask], gcn_input.y[gcn_input.train_mask])
+        loss = criterion(output[data.train_mask], data.y[data.train_mask])
         loss.backward()
         optimizer.step()
         losses.append(loss.item())
         epochs.append(epoch)
 
-        pred = (output[gcn_input.train_mask] > 0.5).float()
-        correct = (pred == gcn_input.y[gcn_input.train_mask]).sum().item()
-        acc = correct / gcn_input.train_mask.sum().item()
+        pred = (output[data.train_mask] > 0.5).float()
+        correct = (pred == data.y[data.train_mask]).sum().item()
+        acc = correct / data.train_mask.sum().item()
         acces.append(acc)
 
         print('epoch {}/{}, train, loss={:.4f} acc={:.4f}'.format(
@@ -63,19 +65,18 @@ if __name__ == '__main__':
 
         # model.eval()
         with torch.no_grad():
-            pred = (output[gcn_input.val_mask] > 0.5).float()
-            correct = (pred == gcn_input.y[gcn_input.val_mask]).sum().item()
-            acc = correct / gcn_input.val_mask.sum().item()
+            pred = (output[data.val_mask] > 0.5).float()
+            correct = (pred == data.y[data.val_mask]).sum().item()
+            acc = correct / data.val_mask.sum().item()
 
             print('epoch {}/{}, val, loss={:.4f} acc={:.4f}'.format(
                 epoch, args.max_epoch, loss.item(), acc))
 
-    fusion_model.eval()
     with torch.no_grad():
         create_loss_image(losses, epochs)
         create_acc_image(acces, epochs)
-        output = gcn_model(gcn_input)
-        mask = np.load('datasets/npy/label/Mask.npy')
+        output = model(data)
+        mask = np.load('./datasets/npy/label/Mask.npy')
         create_heating_image(output, mask)
-        pred = gcn_input[gcn_input.val_mask]
-        create_roc_image(gcn_input.y[gcn_input.val_mask].detach().numpy(), pred)
+        pred = data[data.val_mask]
+        create_roc_image(data.y[data.val_mask].detach().numpy(), pred)
