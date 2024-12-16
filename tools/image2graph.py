@@ -8,10 +8,10 @@ from torch_geometric.data import Data
 from tools.preprocess import preprocessing
 from sklearn.preprocessing import StandardScaler
 
-mask = np.load('./datasets/npy/label/Mask.npy')
-target = np.load('./datasets/npy/label/Target.npy')
-anticline = np.load('./datasets/npy/geology/Anticline_Buffer.npy')
-godenville = np.load('./datasets/npy/geology/Godenville_Formation_Buffer.npy')
+mask = np.load('./mini-datasets/npy/label/Mask.npy')
+target = np.load('./mini-datasets/npy/label/Target.npy')
+anticline = np.load('./mini-datasets/npy/geology/Anticline_Buffer.npy')
+godenville = np.load('./mini-datasets/npy/geology/Godenville_Formation_Buffer.npy')
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 height = mask.shape[0]
 width = mask.shape[1]
@@ -24,8 +24,8 @@ def build_edge():
     :return:
     '''
     node_features, indices_map = preprocessing([
-        './datasets1/npy/geochemical',
-        './datasets1/npy/geology'
+        './mini-datasets/npy/geochemical',
+        './mini-datasets/npy/geology'
     ])
     node_features = torch.tensor(node_features, dtype=torch.float, device=device).contiguous()
 

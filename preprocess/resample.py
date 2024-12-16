@@ -29,7 +29,8 @@ def resample(input_path, output_path, target_shape):
 
 
 if __name__ == '__main__':
-    target_shape = (2220, 1826)
+    target_shape = (114, 92)
 
-    resample('../datasets/npy/label/', '../datasets/npy/label/', target_shape)
-    resample('../datasets/npy/geology/', '../datasets/npy/geology/', target_shape)
+    resample('../mini-datasets18/npy/label/', '../mini-datasets18/npy/label/', target_shape)
+    resample('../mini-datasets18/npy/geology/', '../mini-datasets18/npy/geology/', target_shape)
+    resample('../mini-datasets18/npy/geochemical', '../mini-datasets18/npy/geochemical', target_shape)
