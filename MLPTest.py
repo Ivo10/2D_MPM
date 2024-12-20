@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 from evaluation.ComputeAccuracy import compute_accuracy
+from evaluation.CreateEvalutionCurve import create_acc_image
 from evaluation.CreateHeatingImage import create_heating_image
 from model.MLP import MLP
 from tools.image2graph import build_mask
@@ -20,15 +21,18 @@ if __name__ == '__main__':
 
     model = MLP()
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.006, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-4)
     criterion = torch.nn.BCELoss()
+    epochs = []
+    acces = []
 
-    for epoch in range(1500):
+    for epoch in range(2000):
         output = model(x_train)
         optimizer.zero_grad()
         loss = criterion(output, y_train)
         loss.backward()
         optimizer.step()
+        epochs.append(epoch)
 
         model.eval()
         with torch.no_grad():
@@ -36,12 +40,15 @@ if __name__ == '__main__':
             val_loss = criterion(val_output, y_val)
             val_accuracy = compute_accuracy(val_output, y_val)  # 计算验证集准确率
 
-        print('epoch {}/300, train_loss={:.4f}, val_loss={:.4f}, val_accuracy={:.4f}'.format(
-            epoch + 1, loss.item(), val_loss.item(), val_accuracy
-        ))
+            print('epoch {}/300, train_loss={:.4f}, val_loss={:.4f}, val_accuracy={:.4f}'.format(
+                epoch + 1, loss.item(), val_loss.item(), val_accuracy
+            ))
+            acces.append(val_accuracy)
+
 
     with torch.no_grad():
         output = model(data)
         print(output.shape)
         mask = np.load('./mini-datasets/npy/label/Mask.npy')
         create_heating_image(output, mask)
+        create_acc_image(acces, epochs)

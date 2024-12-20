@@ -8,9 +8,9 @@ from torch_geometric.nn import GCNConv
 class GCN(torch.nn.Module):
     def __init__(self, data):
         super(GCN, self).__init__()
-        self.conv1 = GCNConv(data.num_features, 16)
-        self.conv2 = GCNConv(16, 16)
-        self.fc = torch.nn.Linear(16, 1)
+        self.conv1 = GCNConv(data.num_features, 6)
+        self.conv2 = GCNConv(6, 4)
+        self.fc = torch.nn.Linear(4, 1)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # self.pc1_score = torch.tensor(pc1_score(data.x[:, :-2].cpu().detach().numpy()),
         #                               dtype=torch.float32, requires_grad=False, device=self.device)[:, np.newaxis]

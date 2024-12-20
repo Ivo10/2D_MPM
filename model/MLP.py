@@ -4,8 +4,8 @@ import torch.nn as nn
 class MLP(nn.Module):
     def __init__(self):
         super(MLP, self).__init__()
-        self.fc1 = nn.Linear(6, 4)
-        self.fc2 = nn.Linear(4, 1)
+        self.fc1 = nn.Linear(6, 64)
+        self.fc2 = nn.Linear(64, 1)
 
     def forward(self, x):
         x = self.fc1(x)

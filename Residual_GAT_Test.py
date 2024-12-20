@@ -5,6 +5,7 @@ import numpy as np
 import torch.optim
 from torch_geometric.data import Data
 
+from evaluation.ComputeAccuracy import compute_accuracy
 from evaluation.CreateEvalutionCurve import create_roc_image, create_loss_image, create_acc_image
 from evaluation.CreateHeatingImage import create_heating_image
 from model.Residual_GAT import Residual_GAT
@@ -12,7 +13,7 @@ from tools.image2graph import build_edge, build_mask, scaler, add_noise
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--max-epoch', type=int, default=300)
+    parser.add_argument('--max-epoch', type=int, default=2000)
     parser.add_argument('--degree', type=int, default=4)
 
     args = parser.parse_args()
@@ -49,28 +50,22 @@ if __name__ == '__main__':
         loss = criterion(output[data.train_mask], data.y[data.train_mask])
         loss.backward()
         optimizer.step()
-        losses.append(loss.item())
         epochs.append(epoch)
-
-        pred = (output[data.train_mask] > 0.5).float()
-        correct = (pred == data.y[data.train_mask]).sum().item()
-        acc = correct / data.train_mask.sum().item()
-
-        print('epoch {}/{}, train, loss={:.4f} acc={:.4f}'.format(
-            epoch, args.max_epoch, loss.item(), acc))
 
         # # Save model weights of this epoch
         # torch.save(model.state_dict(), '../saved_model/GCN.pth')
 
-        # model.eval()
+        model.eval()
         with torch.no_grad():
-            pred = (output[data.val_mask] > 0.5).float()
-            correct = (pred == data.y[data.val_mask]).sum().item()
-            acc = correct / data.val_mask.sum().item()
-            acces.append(acc)
+            val_output = output[data.val_mask]
+            val_loss = criterion(val_output, data.y[data.val_mask])
+            losses.append(val_loss.item())
+            val_accuracy = compute_accuracy(val_output, data.y[data.val_mask])
 
-            print('epoch {}/{}, val, loss={:.4f} acc={:.4f}'.format(
-                epoch, args.max_epoch, loss.item(), acc))
+            print('epoch {}/{}, train_loss={:.4f}, val_loss={:.4f}, val_accuracy={:.4f}'.format(
+                epoch + 1, args.max_epoch, loss.item(), val_loss.item(), val_accuracy
+            ))
+            acces.append(val_accuracy)
 
     with torch.no_grad():
         create_loss_image(losses, epochs)

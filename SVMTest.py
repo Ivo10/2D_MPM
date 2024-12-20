@@ -20,14 +20,12 @@ if __name__ == '__main__':
 
     y_pred_proba = predictor.predict_proba(x_val)
 
-    threshold = 0.5  # 例如设置一个阈值0.5
-    y_pred_class = (y_pred_proba[:, 1] >= threshold).astype(int)  # 根据阈值将概率转为标签
+    threshold = 0.5
+    y_pred_class = (y_pred_proba[:, 1] >= threshold).astype(int)
     print(classification_report(y_val, y_pred_class, target_names=['NO', 'YES']))
 
     confusion_matrix_model = confusion_matrix(y_val, y_pred_class)
     print(confusion_matrix_model)
-
-    print(y_pred_proba)
 
     mask = np.load('./mini-datasets/npy/label/Mask.npy')
     create_heating_image(predictor.predict_proba(data)[:, 1], mask)
